@@ -240,9 +240,7 @@ class Container implements ContainerInterface,ArrayAccess{
         //如果已经绑定,删除之前所有的服务实例
         $this->removeStaleInstances($serviceName);
 
-        if($concrete instanceof Closure){
-            $concrete = $concrete->bindTo($this);
-        }elseif(is_null($concrete)){
+        if(is_null($concrete)){
             $concrete = $serviceName;
         }
 
@@ -347,7 +345,31 @@ class Container implements ContainerInterface,ArrayAccess{
     {
         $concrete = $this->normalize($concrete);
 
-        return new ContextualBindingBuilder($this,$concrete);
+        return new class($this,$concrete) {
+            protected $container;
+
+            protected $concrete;
+
+            protected $needs;
+
+            public function __construct(Container $container, $concrete)
+            {
+                $this->concrete = $concrete;
+                $this->container = $container;
+            }
+
+            public function needs($abstract)
+            {
+                $this->needs = $abstract;
+
+                return $this;
+            }
+
+            public function give($implementation)
+            {
+                $this->container->addContextualBinding($this->concrete, $this->needs, $implementation);
+            }
+        };
     }
 
     /**
@@ -445,7 +467,8 @@ class Container implements ContainerInterface,ArrayAccess{
     public function build($concrete, array $parameters = [])
     {
         if ($concrete instanceof Closure) {
-            return call_user_func_array($concrete,$parameters);
+            // ...$parameters 为参数解包,5.6以上支持
+            return $concrete->call($this,...$parameters);
         }
         //通过反射机制实现实例
         $reflection = new ReflectionClass($concrete);

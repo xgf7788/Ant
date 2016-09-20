@@ -23,3 +23,19 @@ $app->addMiddleware(function($request,$response){
     $end = (microtime(true) - $start) * 1000;
     $response->withHeader('x-run-time',$end);
 });
+
+$app->addMiddleware(function($request,$response){
+    /* @var $response Ant\Http\Response */
+    $response->write('123');
+
+    yield;
+
+    $response->write('321');
+});
+$app->addMiddleware(function($request,$response){
+    $response->write('456');
+
+    yield;
+
+    $response->write('654');
+});
